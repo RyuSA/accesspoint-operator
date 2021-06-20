@@ -1,0 +1,16 @@
+domain: ryusa.github.com
+layout:
+- go.kubebuilder.io/v3
+projectName: accesspoint-operator
+repo: github.com/RyuSA/accesspoint-operator
+resources:
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: ryusa.github.com
+  group: accesspoint
+  kind: AccessPoint
+  path: github.com/RyuSA/accesspoint-operator/api/v1alpha1
+  version: v1alpha1
+version: "3"

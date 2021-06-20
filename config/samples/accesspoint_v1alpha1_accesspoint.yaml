@@ -1,0 +1,7 @@
+apiVersion: accesspoint.ryusa.github.com/v1alpha1
+kind: AccessPoint
+metadata:
+  name: accesspoint-sample
+spec:
+  # Add fields here
+  foo: bar
