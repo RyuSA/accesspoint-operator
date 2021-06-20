@@ -25,11 +25,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	accesspointv1alpha1 "github.com/RyuSA/accesspoint-operator/api/v1alpha1"
+	"github.com/go-logr/logr"
 )
 
 // AccessPointReconciler reconciles a AccessPoint object
 type AccessPointReconciler struct {
 	client.Client
+	Log    logr.Logger
 	Scheme *runtime.Scheme
 }
 

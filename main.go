@@ -80,6 +80,7 @@ func main() {
 
 	if err = (&controllers.AccessPointReconciler{
 		Client: mgr.GetClient(),
+		Log:    ctrl.Log.WithName("accesspoint").WithName("AccessPoint"),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "AccessPoint")
