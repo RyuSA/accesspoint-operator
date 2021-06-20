@@ -3,5 +3,8 @@ kind: AccessPoint
 metadata:
   name: accesspoint-sample
 spec:
-  # Add fields here
-  foo: bar
+  ssid: raspberry
+  password: fooooo
+  interface: wlan0
+  bridge: br0
+  nodeSelector: {}
