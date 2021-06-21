@@ -146,8 +146,8 @@ func (r *AccessPointReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 					Spec: corev1.PodSpec{
 						Containers: []corev1.Container{
 							{
-								Image: "nginx:latest",
-								Name:  "nginx",
+								Image: "ryusa/simple-accesspoint:latest",
+								Name:  "accesspoint",
 								VolumeMounts: []corev1.VolumeMount{
 									{
 										Name:      "config",
