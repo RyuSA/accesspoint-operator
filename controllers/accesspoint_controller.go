@@ -144,6 +144,7 @@ func (r *AccessPointReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 						Labels: accesspoint_base_label,
 					},
 					Spec: corev1.PodSpec{
+						HostNetwork: true,
 						Containers: []corev1.Container{
 							{
 								Image: "ryusa/simple-accesspoint:latest",
@@ -153,6 +154,9 @@ func (r *AccessPointReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 										Name:      "config",
 										MountPath: "/hostapd/conf/",
 									},
+								},
+								SecurityContext: &corev1.SecurityContext{
+									Privileged: &[]bool{true}[0],
 								},
 							},
 						},
