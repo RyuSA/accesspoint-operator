@@ -1,0 +1,103 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    control-plane: controller-manager
+  name: system
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: controller-manager
+  namespace: system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: manager-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: manager-role
+subjects:
+- kind: ServiceAccount
+  name: controller-manager
+  namespace: system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  creationTimestamp: null
+  name: manager-role
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - accesspoint.ryusa.github.com
+  resources:
+  - accesspoints
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - accesspoint.ryusa.github.com
+  resources:
+  - accesspoints/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - accesspoint.ryusa.github.com
+  resources:
+  - accesspoints/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - apps
+  resources:
+  - daemonsets
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: accesspointoperator
+  namespace: system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: accesspointoperator
+  strategy: {}
+  template:
+    metadata:
+      labels:
+        app: accesspointoperator
+    spec:
+      containers:
+      - image: ryusa/accesspoint-operator:latest 
+        name: operator
+      serviceAccountName: controller-manager

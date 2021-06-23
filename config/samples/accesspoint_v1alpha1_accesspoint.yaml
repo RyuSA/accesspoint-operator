@@ -4,7 +4,8 @@ metadata:
   name: accesspoint-sample
 spec:
   ssid: raspberry
-  password: fooooo
+  password: password
   interface: wlan0
   bridge: br0
-  nodeSelector: {}
+  nodeSelector: 
+    accesspoint: sample

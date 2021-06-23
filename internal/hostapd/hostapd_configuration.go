@@ -9,8 +9,7 @@ type HostapdConfiguration struct {
 }
 
 func (h *HostapdConfiguration) Configure() string {
-	defaultconfig := `
-interface=wlan0
+	defaultconfig := `interface=wlan0
 driver=nl80211
 bridge=br0
 hw_mode=g
@@ -23,7 +22,6 @@ macaddr_acl=0
 auth_algs=1
 ignore_broadcast_ssid=0
 wpa=2
-wpa_passphrase=password
 wpa_key_mgmt=WPA-PSK
 rsn_pairwise=CCMP
 ctrl_interface=/var/run/hostapd
