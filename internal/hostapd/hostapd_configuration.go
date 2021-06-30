@@ -1,21 +1,41 @@
 package hostapd
 
-import "strings"
+import (
+	"reflect"
+	"strings"
+)
 
 type HostapdConfiguration struct {
-	Networkinterface string
-	Ssid             string
-	Password         string
+	Networkinterface string `key:"interface"`
+	Ssid             string `key:"ssid"`
+	Password         string `key:"wpa_passphrase"`
+	Bridge           string `key:"bridge"`
+	Driver           string `key:"driver" default:"nl80211"`
+	Mode             string `key:"hw_mode" default:"g"`
+	CountryCode      string `key:"country_code" default:"JP"`
 }
 
-func (h *HostapdConfiguration) Configure() string {
-	defaultconfig := `interface=wlan0
-driver=nl80211
-bridge=br0
-hw_mode=g
-channel=6
-ieee80211d=1
-country_code=JP
+func ConfigureHostapd(h HostapdConfiguration) string {
+	var builder strings.Builder
+	join := func(key string, value string) string {
+		return key + "=" + value + "\n"
+	}
+
+	t := reflect.TypeOf(h)
+	v := reflect.ValueOf(h)
+	for i := 0; i < t.NumField(); i++ {
+		field := t.Field(i)
+		key := field.Tag.Get("key")
+		value := v.Field(i).String()
+		if value == "" {
+			value = field.Tag.Get("default")
+			if value == "" {
+				continue
+			}
+		}
+		builder.WriteString(join(key, value))
+	}
+	defaultconfig := `ieee80211d=1
 ieee80211n=1
 wmm_enabled=1
 macaddr_acl=0
@@ -27,13 +47,6 @@ rsn_pairwise=CCMP
 ctrl_interface=/var/run/hostapd
 ctrl_interface_group=0
 `
-	var builder strings.Builder
-	join := func(key string, value string) string {
-		return key + "=" + value + "\n"
-	}
 	builder.WriteString(defaultconfig)
-	builder.WriteString(join("interface", h.Networkinterface))
-	builder.WriteString(join("ssid", h.Ssid))
-	builder.WriteString(join("wpa_passphrase", h.Password))
 	return builder.String()
 }
