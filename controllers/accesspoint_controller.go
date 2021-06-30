@@ -171,7 +171,7 @@ func (r *AccessPointReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 							HostNetwork: true,
 							Containers: []corev1.Container{
 								{
-									Image: "nginx",
+									Image: "ryusa/simple-accesspoint:latest",
 									Name:  "accesspoint",
 									VolumeMounts: []corev1.VolumeMount{
 										{
