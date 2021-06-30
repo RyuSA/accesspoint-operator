@@ -38,19 +38,6 @@ type AccessPointSpec struct {
 	// Password for this AccessPoint
 	Password string `json:"password,omitempty"` // TODO -> Secret
 
-	//+kubebuilder:validation:Required
-	//+kubebuilder:validation:Format:=string
-
-	// The Network Interface name
-	Interface string `json:"interface,omitempty"`
-
-	//+kubebuilder:validation:Format:=string
-
-	// If the interface needs bridge to connect to the Internet, you want to set the bridge name.
-	Bridge string `json:"bridge,omitempty"`
-
-	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
-
 	// This ap will deploy onto this devices.
 	Devices []string `json:"devices,omitempty"`
 }

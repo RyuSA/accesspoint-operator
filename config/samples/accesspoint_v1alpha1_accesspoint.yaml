@@ -5,7 +5,6 @@ metadata:
 spec:
   ssid: raspberry
   password: password
-  interface: wlan0
-  bridge: br0
-  nodeSelector: 
-    accesspoint: sample
+  devices:
+  - alice-room
+  - bob-room
