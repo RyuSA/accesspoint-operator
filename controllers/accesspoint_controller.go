@@ -115,7 +115,7 @@ func (r *AccessPointReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		if _, err := ctrl.CreateOrUpdate(ctx, r.Client, configmap, func() error {
 			configmap.Labels = createLabel(configmap.Labels, req.Name)
 			configmap.Data = make(map[string]string)
-			configmap.Data["hostapd.conf"] = hostapdConfig.Configure()
+			configmap.Data["hostapd.conf"] = hostapd.ConfigureHostapd(*hostapdConfig)
 			if err := ctrl.SetControllerReference(&accesspoint, configmap, r.Scheme); err != nil {
 				log.Error(err, "unable to set ownerReference")
 				return err
@@ -249,5 +249,6 @@ func NewHostapdConfiguration(accesspoint *accesspointv1alpha1.AccessPoint) *host
 		Networkinterface: accesspoint.Spec.Interface,
 		Ssid:             accesspoint.Spec.Ssid,
 		Password:         accesspoint.Spec.Password,
+		Bridge:           accesspoint.Spec.Bridge,
 	}
 }
