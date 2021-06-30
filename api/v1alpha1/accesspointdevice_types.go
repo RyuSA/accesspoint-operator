@@ -25,11 +25,19 @@ import (
 
 // AccessPointDeviceSpec defines the desired state of AccessPointDevice
 type AccessPointDeviceSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	//+kubebuilder:validation:Required
+	//+kubebuilder:validation:Format:=string
 
-	// Foo is an example field of AccessPointDevice. Edit accesspointdevice_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	// The Network Interface name
+	Interface string `json:"interface,omitempty"`
+
+	//+kubebuilder:validation:Format:=string
+
+	// If the interface needs bridge to connect to the Internet, you want to set the bridge name.
+	Bridge string `json:"bridge,omitempty"`
+
+	// Specify the nodeselector to deploy
+	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
 }
 
 // AccessPointDeviceStatus defines the observed state of AccessPointDevice
