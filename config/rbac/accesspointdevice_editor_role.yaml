@@ -1,0 +1,24 @@
+# permissions for end users to edit accesspointdevices.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: accesspointdevice-editor-role
+rules:
+- apiGroups:
+  - accesspoint.ryusa.github.com
+  resources:
+  - accesspointdevices
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - accesspoint.ryusa.github.com
+  resources:
+  - accesspointdevices/status
+  verbs:
+  - get
