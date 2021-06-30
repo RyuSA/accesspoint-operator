@@ -36,24 +36,11 @@ spec:
           spec:
             description: AccessPointSpec defines the desired state of AccessPoint
             properties:
-              bridge:
-                description: If the interface needs bridge to connect to the Internet,
-                  you want to set the bridge name.
-                format: string
-                type: string
               devices:
                 description: This ap will deploy onto this devices.
                 items:
                   type: string
                 type: array
-              interface:
-                description: The Network Interface name
-                format: string
-                type: string
-              nodeSelector:
-                additionalProperties:
-                  type: string
-                type: object
               password:
                 description: Password for this AccessPoint
                 format: string

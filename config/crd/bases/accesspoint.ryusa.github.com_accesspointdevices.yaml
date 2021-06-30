@@ -48,6 +48,7 @@ spec:
               nodeSelector:
                 additionalProperties:
                   type: string
+                description: Specify the nodeselector to deploy
                 type: object
             type: object
           status:
