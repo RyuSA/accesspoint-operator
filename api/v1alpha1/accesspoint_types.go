@@ -50,6 +50,9 @@ type AccessPointSpec struct {
 	Bridge string `json:"bridge,omitempty"`
 
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
+
+	// This ap will deploy onto this devices.
+	Devices []string `json:"devices,omitempty"`
 }
 
 // AccessPointStatus defines the observed state of AccessPoint
