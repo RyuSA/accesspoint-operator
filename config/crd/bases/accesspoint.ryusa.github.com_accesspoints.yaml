@@ -41,6 +41,11 @@ spec:
                   you want to set the bridge name.
                 format: string
                 type: string
+              devices:
+                description: This ap will deploy onto this devices.
+                items:
+                  type: string
+                type: array
               interface:
                 description: The Network Interface name
                 format: string

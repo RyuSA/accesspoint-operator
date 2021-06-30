@@ -36,10 +36,19 @@ spec:
           spec:
             description: AccessPointDeviceSpec defines the desired state of AccessPointDevice
             properties:
-              foo:
-                description: Foo is an example field of AccessPointDevice. Edit accesspointdevice_types.go
-                  to remove/update
+              bridge:
+                description: If the interface needs bridge to connect to the Internet,
+                  you want to set the bridge name.
+                format: string
                 type: string
+              interface:
+                description: The Network Interface name
+                format: string
+                type: string
+              nodeSelector:
+                additionalProperties:
+                  type: string
+                type: object
             type: object
           status:
             description: AccessPointDeviceStatus defines the observed state of AccessPointDevice
