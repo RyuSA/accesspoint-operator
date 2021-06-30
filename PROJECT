@@ -13,4 +13,12 @@ resources:
   kind: AccessPoint
   path: github.com/RyuSA/accesspoint-operator/api/v1alpha1
   version: v1alpha1
+- api:
+    crdVersion: v1
+    namespaced: true
+  domain: ryusa.github.com
+  group: accesspoint
+  kind: AccessPointDevice
+  path: github.com/RyuSA/accesspoint-operator/api/v1alpha1
+  version: v1alpha1
 version: "3"

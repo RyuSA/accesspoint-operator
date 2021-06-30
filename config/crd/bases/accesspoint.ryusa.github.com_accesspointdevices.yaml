@@ -6,20 +6,20 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.4.1
   creationTimestamp: null
-  name: accesspoints.accesspoint.ryusa.github.com
+  name: accesspointdevices.accesspoint.ryusa.github.com
 spec:
   group: accesspoint.ryusa.github.com
   names:
-    kind: AccessPoint
-    listKind: AccessPointList
-    plural: accesspoints
-    singular: accesspoint
+    kind: AccessPointDevice
+    listKind: AccessPointDeviceList
+    plural: accesspointdevices
+    singular: accesspointdevice
   scope: Namespaced
   versions:
   - name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: AccessPoint is the Schema for the accesspoints API
+        description: AccessPointDevice is the Schema for the accesspointdevices API
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -34,24 +34,25 @@ spec:
           metadata:
             type: object
           spec:
-            description: AccessPointSpec defines the desired state of AccessPoint
+            description: AccessPointDeviceSpec defines the desired state of AccessPointDevice
             properties:
-              devices:
-                description: This ap will deploy onto this devices.
-                items:
+              bridge:
+                description: If the interface needs bridge to connect to the Internet,
+                  you want to set the bridge name.
+                format: string
+                type: string
+              interface:
+                description: The Network Interface name
+                format: string
+                type: string
+              nodeSelector:
+                additionalProperties:
                   type: string
-                type: array
-              password:
-                description: Password for this AccessPoint
-                format: string
-                type: string
-              ssid:
-                description: SSID for this AccessPoint
-                format: string
-                type: string
+                description: Specify the nodeselector to deploy
+                type: object
             type: object
           status:
-            description: AccessPointStatus defines the observed state of AccessPoint
+            description: AccessPointDeviceStatus defines the observed state of AccessPointDevice
             type: object
         type: object
     served: true

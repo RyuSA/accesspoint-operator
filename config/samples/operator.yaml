@@ -57,6 +57,14 @@ rules:
 - apiGroups:
   - accesspoint.ryusa.github.com
   resources:
+  - accesspointdevices
+  verbs:
+  - get
+  - list
+  - watch  
+- apiGroups:
+  - accesspoint.ryusa.github.com
+  resources:
   - accesspoints/finalizers
   verbs:
   - update

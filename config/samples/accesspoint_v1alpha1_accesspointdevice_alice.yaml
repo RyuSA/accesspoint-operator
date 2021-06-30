@@ -1,0 +1,9 @@
+apiVersion: accesspoint.ryusa.github.com/v1alpha1
+kind: AccessPointDevice
+metadata:
+  name: alice-room
+spec:
+  interface: wlan0
+  bridge: br0
+  nodeSelector: 
+    accesspoint: alice

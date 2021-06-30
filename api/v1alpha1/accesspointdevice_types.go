@@ -23,27 +23,25 @@ import (
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
-// AccessPointSpec defines the desired state of AccessPoint
-type AccessPointSpec struct {
-
+// AccessPointDeviceSpec defines the desired state of AccessPointDevice
+type AccessPointDeviceSpec struct {
 	//+kubebuilder:validation:Required
 	//+kubebuilder:validation:Format:=string
 
-	// SSID for this AccessPoint
-	Ssid string `json:"ssid,omitempty"`
+	// The Network Interface name
+	Interface string `json:"interface,omitempty"`
 
-	//+kubebuilder:validation:Required
 	//+kubebuilder:validation:Format:=string
 
-	// Password for this AccessPoint
-	Password string `json:"password,omitempty"` // TODO -> Secret
+	// If the interface needs bridge to connect to the Internet, you want to set the bridge name.
+	Bridge string `json:"bridge,omitempty"`
 
-	// This ap will deploy onto this devices.
-	Devices []string `json:"devices,omitempty"`
+	// Specify the nodeselector to deploy
+	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
 }
 
-// AccessPointStatus defines the observed state of AccessPoint
-type AccessPointStatus struct {
+// AccessPointDeviceStatus defines the observed state of AccessPointDevice
+type AccessPointDeviceStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 }
@@ -51,24 +49,24 @@ type AccessPointStatus struct {
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 
-// AccessPoint is the Schema for the accesspoints API
-type AccessPoint struct {
+// AccessPointDevice is the Schema for the accesspointdevices API
+type AccessPointDevice struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   AccessPointSpec   `json:"spec,omitempty"`
-	Status AccessPointStatus `json:"status,omitempty"`
+	Spec   AccessPointDeviceSpec   `json:"spec,omitempty"`
+	Status AccessPointDeviceStatus `json:"status,omitempty"`
 }
 
 //+kubebuilder:object:root=true
 
-// AccessPointList contains a list of AccessPoint
-type AccessPointList struct {
+// AccessPointDeviceList contains a list of AccessPointDevice
+type AccessPointDeviceList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []AccessPoint `json:"items"`
+	Items           []AccessPointDevice `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&AccessPoint{}, &AccessPointList{})
+	SchemeBuilder.Register(&AccessPointDevice{}, &AccessPointDeviceList{})
 }
