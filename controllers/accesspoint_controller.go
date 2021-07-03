@@ -18,6 +18,8 @@ package controllers
 
 import (
 	"context"
+	"crypto/md5"
+	"encoding/hex"
 	"time"
 
 	hostapd "github.com/RyuSA/accesspoint-operator/internal/hostapd"
@@ -71,18 +73,18 @@ func (r *AccessPointReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	namespacedName := req.NamespacedName
 
 	log := r.Log.WithValues("accesspoint", namespacedName)
-	log.Info("start reconsile")
+	log.Info("start reconsile", "request", namespacedName)
 
 	// リクエスト内容を元にAPを検索します
-	// このAPと1対1に紐つくDaemonSetを作成していきます
 	var accesspoint accesspointv1alpha1.AccessPoint
-	log.Info("fetching AccessPoint named", "name", namespacedName)
+	log.Info("fetching AccessPoint", "name", namespacedName)
 	if err := r.Get(ctx, namespacedName, &accesspoint); err != nil {
+		log.Info("AccessPoint does not found")
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
-	log.Info("Accesspoint has been successfully fetched")
+	log.Info("AccessPoint has been successfully fetched")
 
-	// accesspoint.Spec.Devicesに紐つくDevice一覧を取得してくる
+	// accesspoint.Spec.Devicesに紐つくDevice一覧を取得し配列に詰め込む
 	var accaccesspointdevices []accesspointv1alpha1.AccessPointDevice
 	for _, deviceName := range accesspoint.Spec.Devices {
 		var accaccesspointdevice accesspointv1alpha1.AccessPointDevice
@@ -90,32 +92,27 @@ func (r *AccessPointReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			Namespace: namespace,
 			Name:      deviceName,
 		}, &accaccesspointdevice); err != nil {
-			r.Log.Info("AccessPointDevice not found")
+			log.Info("AccessPointDevice not found")
 			return ctrl.Result{}, client.IgnoreNotFound(err)
 		}
 		accaccesspointdevices = append(accaccesspointdevices, accaccesspointdevice)
 	}
+	log.Info("AccessPointDevices have been successfully fetched")
 
+	// 各AccessPointDeviceごとにDaemonSetとConfigMapを1つずつ紐つけます
+	// ==== 基本戦略 ====
+	// 1. 入力を元にhostapdの設定を作成する
+	//   - AccessPointからSSIDなどのAP情報
+	//   - AccessPointDeviceからインタフェースなどの物理情報
+	// 2. hostapの設定からハッシュ値を取り出す
+	// 3. hostapdの設定ファイルを持つConfigMapを生成
+	//   - この際に"hostapdversion=${hash}"のアノテーションを付与する
+	// 4. 3.で作成したConfigMapをマウントするDaemonSetを作成
 	for _, device := range accaccesspointdevices {
+		// ConfigMapとDaemonSetの名前
 		fullName := name + "-" + device.Name
-		accesspoint_base_label := map[string]string{
-			"app.kubernetes.io/name":     "accesspoint",
-			"app.kubernetes.io/instance": fullName,
-		}
 
-		// AP/Deviceの組み合わせに紐つくDaemonSetを取得します
-		// 存在していれば変更点の調査、更新します
-		// 存在していなければ新規作成します
-		log.Info("fetching related DaemonSets...")
-		var daemonsets appsv1.DaemonSetList
-		if err := r.List(ctx, &daemonsets, client.MatchingLabels(accesspoint_base_label)); err != nil {
-			return ctrl.Result{}, client.IgnoreNotFound(err)
-		}
-		log.Info("DaemonSets has been successfully fetched")
-
-		// APに紐つくDaemonSetの個数
-		numberOfDaemonSetRelatedToAp := len(daemonsets.Items)
-
+		// ラベル生成
 		createLabel := func(label map[string]string, instance string) map[string]string {
 			if label == nil {
 				label = make(map[string]string)
@@ -124,22 +121,59 @@ func (r *AccessPointReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			label["app.kubernetes.io/instance"] = instance
 			return label
 		}
+		accesspoint_base_label := createLabel(make(map[string]string), fullName)
 
-		// TODO ましな実装にする
+		// アノテーション生成
+		createAnnotation := func(annotation map[string]string, version string) map[string]string {
+			if annotation == nil {
+				annotation = make(map[string]string)
+			}
+			annotation["hostapdversion"] = version
+			return annotation
+		}
+
+		// AP/Deviceの組み合わせに紐つくDaemonSetを取得します
+		log.Info("fetching related DaemonSets...")
+		var daemonsets appsv1.DaemonSetList
+		if err := r.List(ctx, &daemonsets, client.MatchingLabels(accesspoint_base_label)); err != nil {
+			log.Info("DaemonSets do not found")
+			return ctrl.Result{}, client.IgnoreNotFound(err)
+		}
+		log.Info("DaemonSets have been successfully fetched")
+
+		// APに紐つくDaemonSetの個数
+		theNumberOfDaemonSetRelatedToAp := len(daemonsets.Items)
+
+		// DaemonSetの数が適正、つまり作成か更新の対象になっているかどうか
+		// DaemonSetの数 = 0: まだ同期していないのでDaemonSetを作成する
+		// DaemonSetの数 = 1: 同期済みのDaemonSetあり、更新する
+		theNumberOfDaemonSetIsExpected := theNumberOfDaemonSetRelatedToAp == 0 || theNumberOfDaemonSetRelatedToAp == 1
+
 		// なおConfigMapが2つ以上ないことを検査しないのは、2つ以上あってもDaemonSetにマウントされて
 		// hostapdが読み取るのは1つまでなので検査していません
 		// DaemonSetが多くとも1つ存在する場合、CreateOrUpdateで更新します
 		// 2つ以上存在する場合、ユーザーがなんらか作成した可能性が高いので放置、ログに吐いてReEnqueする
-		if numberOfDaemonSetRelatedToAp == 0 || numberOfDaemonSetRelatedToAp == 1 {
-			log.Info("creating configmap...")
+		if theNumberOfDaemonSetIsExpected {
 			hostapdConfig := NewHostapdConfiguration(&accesspoint, &device)
+			hash := func(config string) string {
+				r := md5.Sum([]byte(config))
+				return hex.EncodeToString(r[:])
+			}
+			configString := hostapd.ConfigureHostapd(*hostapdConfig)
+			configHash := hash(configString)
+			log.Info("", "config", configString)
+			log.Info("", "hash value", configHash)
+
+			log.Info("creating configmap...")
 			configmap := &corev1.ConfigMap{}
 			configmap.SetName(fullName)
 			configmap.SetNamespace(namespace)
+
 			if _, err := ctrl.CreateOrUpdate(ctx, r.Client, configmap, func() error {
 				configmap.Labels = createLabel(configmap.Labels, fullName)
+				configmap.Annotations = createAnnotation(configmap.Annotations, configHash)
 				configmap.Data = make(map[string]string)
-				configmap.Data["hostapd.conf"] = hostapd.ConfigureHostapd(*hostapdConfig)
+				configmap.Data["hostapd.conf"] = configString
 				if err := ctrl.SetControllerReference(&accesspoint, configmap, r.Scheme); err != nil {
 					log.Error(err, "unable to set ownerReference")
 					return err
@@ -148,7 +182,7 @@ func (r *AccessPointReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			}); err != nil {
 				log.Error(err, "Error during creating configmap...")
 				return ctrl.Result{
-					RequeueAfter: time.Minute * 1,
+					RequeueAfter: time.Minute,
 				}, err
 			}
 			log.Info("configmap has been successfully created")
@@ -158,64 +192,44 @@ func (r *AccessPointReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			daemonset.SetName(fullName)
 			daemonset.SetNamespace(namespace)
 			if _, err := ctrl.CreateOrUpdate(ctx, r.Client, daemonset, func() error {
-				daemonset.Labels = createLabel(daemonset.Labels, fullName)
-				daemonset.Spec = appsv1.DaemonSetSpec{
-					Selector: &metav1.LabelSelector{
-						MatchLabels: accesspoint_base_label,
-					},
-					Template: corev1.PodTemplateSpec{
-						ObjectMeta: metav1.ObjectMeta{
-							Labels: accesspoint_base_label,
-						},
-						Spec: corev1.PodSpec{
-							HostNetwork: true,
-							Containers: []corev1.Container{
-								{
-									Image: "ryusa/simple-accesspoint:latest",
-									Name:  "accesspoint",
-									VolumeMounts: []corev1.VolumeMount{
-										{
-											Name:      "config",
-											MountPath: "/hostapd/conf/",
-										},
-									},
-									SecurityContext: &corev1.SecurityContext{
-										Privileged: &[]bool{true}[0],
-									},
-								},
-							},
-							Volumes: []corev1.Volume{
-								{
-									Name: "config",
-									VolumeSource: corev1.VolumeSource{
-										ConfigMap: &corev1.ConfigMapVolumeSource{
-											LocalObjectReference: corev1.LocalObjectReference{
-												Name: fullName,
-											},
-										},
-									},
-								},
-							},
-							NodeSelector: device.Spec.NodeSelector,
-						},
-					},
+				// hostapdのバージョンが完全に一致している場合更新する必要がないためreturnで抜ける
+				// TODO 無理やり実装なのでうまく抜ける方法を実装する
+				if daemonset.Annotations["hostapdversion"] == configHash {
+					return &DuplicateHostapd{}
 				}
-
+				daemonset.Labels = createLabel(daemonset.Labels, fullName)
+				daemonset.Annotations = createAnnotation(daemonset.Annotations, configHash)
+				daemonset.Spec = daemonSetSpecTemplate(
+					accesspoint_base_label,                              // Selector
+					accesspoint_base_label,                              // PodTemplateLabel
+					createAnnotation(daemonset.Annotations, configHash), // PodTemplateAnnotation
+					fullName, // ConfigMapName
+					device,   // AccessPointDevice
+				)
 				if err := ctrl.SetControllerReference(&accesspoint, daemonset, r.Scheme); err != nil {
 					log.Error(err, "unable to set ownerReference")
 					return err
 				}
 				return nil
 			}); err != nil {
+				// 専用エラーと一致している場合は更新せずに処理を終了する
+				// TODO 無理やり実装なのでうまく実装しなおす
+				dup := DuplicateHostapd{}
+				if err.Error() == dup.Error() {
+					log.Info("DuplicateHostapd")
+					return ctrl.Result{}, nil
+				}
 				log.Error(err, "Error during creating daemonset...")
 				return ctrl.Result{
-					RequeueAfter: time.Minute * 1,
+					RequeueAfter: time.Minute,
 				}, err
 			}
-
 			log.Info("daemonset has been successfully created")
 		} else {
 			log.Info("there are multiple daemonset related to this event!", "namespacedname", namespacedName, "daemonsets", daemonsets)
+			return ctrl.Result{
+				RequeueAfter: time.Minute,
+			}, nil
 		}
 	}
 
@@ -276,4 +290,55 @@ func NewHostapdConfiguration(accesspoint *accesspointv1alpha1.AccessPoint, acces
 		Password:         accesspoint.Spec.Password,
 		Ssid:             accesspoint.Spec.Ssid,
 	}
+}
+
+func daemonSetSpecTemplate(daemonsetLabel, podTemplateLabel, podTemplateAnnotation map[string]string, configMapName string, device accesspointv1alpha1.AccessPointDevice) appsv1.DaemonSetSpec {
+	return appsv1.DaemonSetSpec{
+		Selector: &metav1.LabelSelector{
+			MatchLabels: daemonsetLabel,
+		},
+		Template: corev1.PodTemplateSpec{
+			ObjectMeta: metav1.ObjectMeta{
+				Labels:      podTemplateLabel,
+				Annotations: podTemplateAnnotation,
+			},
+			Spec: corev1.PodSpec{
+				HostNetwork: true,
+				Containers: []corev1.Container{
+					{
+						Image: "ryusa/simple-accesspoint:latest",
+						Name:  "accesspoint",
+						VolumeMounts: []corev1.VolumeMount{
+							{
+								Name:      "config",
+								MountPath: "/hostapd/conf/",
+							},
+						},
+						SecurityContext: &corev1.SecurityContext{
+							Privileged: &[]bool{true}[0],
+						},
+					},
+				},
+				Volumes: []corev1.Volume{
+					{
+						Name: "config",
+						VolumeSource: corev1.VolumeSource{
+							ConfigMap: &corev1.ConfigMapVolumeSource{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: configMapName,
+								},
+							},
+						},
+					},
+				},
+				NodeSelector: device.Spec.NodeSelector,
+			},
+		},
+	}
+}
+
+type DuplicateHostapd struct{}
+
+func (d *DuplicateHostapd) Error() string {
+	return "Duplicated Hostapd"
 }
