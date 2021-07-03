@@ -15,7 +15,9 @@ type HostapdConfiguration struct {
 	CountryCode      string `key:"country_code" default:"JP"`
 }
 
-func ConfigureHostapd(h HostapdConfiguration) string {
+// HostapdConfigurationをhostapdの設定ファイルフォーマットにシリアライズします
+// e.g interface=wlan0
+func (h HostapdConfiguration) serialize() string {
 	var builder strings.Builder
 	join := func(key string, value string) string {
 		return key + "=" + value + "\n"
@@ -24,8 +26,12 @@ func ConfigureHostapd(h HostapdConfiguration) string {
 	t := reflect.TypeOf(h)
 	v := reflect.ValueOf(h)
 	for i := 0; i < t.NumField(); i++ {
+		// シリアライズの際の"key"に該当する部分を取得
 		field := t.Field(i)
 		key := field.Tag.Get("key")
+		// Valueに該当する部分を取得
+		// フィールドに値が指定されていない場合はメタデータのdefaultを取得します
+		// defaultにも値がない場合、keyそのものを書き込まない
 		value := v.Field(i).String()
 		if value == "" {
 			value = field.Tag.Get("default")
@@ -35,6 +41,12 @@ func ConfigureHostapd(h HostapdConfiguration) string {
 		}
 		builder.WriteString(join(key, value))
 	}
+	return builder.String()
+}
+
+func ConfigureHostapd(h HostapdConfiguration) string {
+	var builder strings.Builder
+	builder.WriteString(h.serialize())
 	defaultconfig := `ieee80211d=1
 ieee80211n=1
 wmm_enabled=1
